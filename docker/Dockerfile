@@ -16,7 +16,10 @@ RUN go mod download && go mod verify
 COPY *.go ./
 
 # Build the application with security hardening flags
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+# Use TARGETARCH for multi-platform builds (set by buildx)
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -a \
     -installsuffix cgo \
     -ldflags="-s -w -extldflags '-static'" \
@@ -38,10 +41,6 @@ USER nonroot:nonroot
 
 # Expose the default port
 EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD ["/a0-logstream2loki", "-help"]
 
 # Run the binary
 ENTRYPOINT ["/a0-logstream2loki"]

@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: ghcr.io/amba/a0-logstream2loki:latest
+    image: ghcr.io/ambravo/a0-logstream2loki:latest
     container_name: a0-logstream2loki
     restart: unless-stopped
     ports:
@@ -14,11 +14,25 @@ services:
       - LOKI_URL=${LOKI_URL:-http://loki:3100}
       - LOKI_USERNAME=${LOKI_USERNAME:-}
       - LOKI_PASSWORD=${LOKI_PASSWORD:-}
-      - HMAC_SECRET=${HMAC_SECRET}
+      - HMAC_SECRET=${HMAC_SECRET:-your-secret-key-changeme}
+      - CUSTOM_AUTH_TOKEN=${CUSTOM_AUTH_TOKEN:-}
       - LISTEN_ADDR=${LISTEN_ADDR:-:8080}
       - BATCH_SIZE=${BATCH_SIZE:-500}
       - BATCH_FLUSH_MS=${BATCH_FLUSH_MS:-200}
       - VERBOSE_LOGGING=${VERBOSE_LOGGING:-false}
+      - ALLOW_LOCAL_IPS=${ALLOW_LOCAL_IPS:-true}
+      - IGNORE_AUTH0_IPS=${IGNORE_AUTH0_IPS:-false}
+      - CUSTOM_IPS=${CUSTOM_IPS:-}
+    # Note: Healthcheck disabled - distroless image has no shell/curl/wget
+    # Use external monitoring or kubernetes liveness probes instead
+    # healthcheck:
+    #   test: ["CMD", "true"]  # Placeholder - service has no built-in healthcheck
+    #   interval: 30s
+    #   timeout: 3s
+    #   start_period: 5s
+    #   retries: 3
+    depends_on:
+      - loki
     networks:
       - logging
 

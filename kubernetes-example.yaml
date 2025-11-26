@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: a0-logstream2loki-config
+  namespace: logging
+data:
+  LOKI_URL: "http://loki:3100"
+  LISTEN_ADDR: ":8080"
+  BATCH_SIZE: "500"
+  BATCH_FLUSH_MS: "200"
+  VERBOSE_LOGGING: "false"
+  ALLOW_LOCAL_IPS: "true"
+  IGNORE_AUTH0_IPS: "false"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: a0-logstream2loki-secret
+  namespace: logging
+type: Opaque
+stringData:
+  HMAC_SECRET: "your-secret-key-changeme"
+  # Optional: Custom static token
+  # CUSTOM_AUTH_TOKEN: "your-custom-token"
+  # Optional: Loki basic auth
+  # LOKI_USERNAME: "admin"
+  # LOKI_PASSWORD: "password"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a0-logstream2loki
+  namespace: logging
+  labels:
+    app: a0-logstream2loki
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: a0-logstream2loki
+  template:
+    metadata:
+      labels:
+        app: a0-logstream2loki
+    spec:
+      containers:
+      - name: a0-logstream2loki
+        image: ghcr.io/ambravo/a0-logstream2loki:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: a0-logstream2loki-config
+        - secretRef:
+            name: a0-logstream2loki-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        # HTTP-based health checks using /health endpoint
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 2
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65532  # nonroot user from distroless
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: a0-logstream2loki
+  namespace: logging
+  labels:
+    app: a0-logstream2loki
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: a0-logstream2loki
+
+---
+# Optional: Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: a0-logstream2loki
+  namespace: logging
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - a0-logs.example.com
+    secretName: a0-logstream2loki-tls
+  rules:
+  - host: a0-logs.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: a0-logstream2loki
+            port:
+              number: 8080
