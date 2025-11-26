@@ -176,7 +176,7 @@ func (b *Batcher) flush(batches map[string]*Batch) {
 // computeLabelKey creates a unique key from a label set for grouping
 // This uses a simple concatenation approach - labels are assumed to have consistent keys
 func computeLabelKey(labels map[string]string) string {
-	// For our use case, we know the exact labels: type, environment_name, tenant_name
+	// For our use case, we know the exact labels: service_name, type, environment_name, tenant_name
 	// Create a deterministic key by concatenating them in a fixed order
-	return labels["type"] + "|" + labels["environment_name"] + "|" + labels["tenant_name"]
+	return labels["service_name"] + "|" + labels["type"] + "|" + labels["environment_name"] + "|" + labels["tenant_name"]
 }

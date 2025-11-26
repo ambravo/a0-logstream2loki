@@ -272,6 +272,13 @@ Each line must be a valid JSON object with the following structure:
 - `data.environment_name`: Environment name (becomes Loki label)
 - `data.tenant_name`: Tenant name (becomes Loki label)
 
+**Loki Labels**:
+All log entries are sent to Loki with the following labels:
+- `service_name`: Always set to `auth0_logs`
+- `type`: Log type from Auth0
+- `environment_name`: Environment name from Auth0
+- `tenant_name`: Tenant name from Auth0
+
 ### Health Check
 
 ```bash

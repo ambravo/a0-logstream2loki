@@ -175,6 +175,7 @@ func (h *LogsHandler) parseLogLine(line string) (LogEntry, error) {
 
 	// Create labels map
 	labels := map[string]string{
+		"service_name":     "auth0_logs",
 		"type":             logData.Data.Type,
 		"environment_name": logData.Data.EnvironmentName,
 		"tenant_name":      logData.Data.TenantName,
