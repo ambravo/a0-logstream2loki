@@ -16,9 +16,9 @@ RUN go mod download && go mod verify
 COPY *.go ./
 
 # Build the application with security hardening flags
-# Use TARGETARCH for multi-platform builds (set by buildx)
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+# Use TARGETARCH for multi-platform builds (set by buildx automatically)
+ARG TARGETOS
+ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -a \
     -installsuffix cgo \
