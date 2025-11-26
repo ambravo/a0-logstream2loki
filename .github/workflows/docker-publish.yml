@@ -50,6 +50,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=branch,suffix=-${{ matrix.tag-suffix }}
             type=semver,pattern={{version}},suffix=-${{ matrix.tag-suffix }}
@@ -57,7 +59,7 @@ jobs:
             type=semver,pattern={{major}},suffix=-${{ matrix.tag-suffix }}
             type=sha,prefix={{branch}}-,suffix=-${{ matrix.tag-suffix }}
             type=raw,value=latest-${{ matrix.tag-suffix }},enable={{is_default_branch}}
-            type=raw,value=latest,enable=${{ matrix.is-latest && github.ref == 'refs/heads/master' || matrix.is-latest && github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ matrix.is-latest == true }}
 
       - name: Build and push Docker image (${{ matrix.platform }})
         id: build
