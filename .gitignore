@@ -1,4 +1,4 @@
-# Binaries
+# Binaries for programs and plugins
 a0-logstream2loki
 *.exe
 *.exe~
@@ -6,25 +6,147 @@ a0-logstream2loki
 *.so
 *.dylib
 
-# Test binary
+# Test binary, built with `go test -c`
 *.test
 
-# Output of the go coverage tool
+# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Dependency directories
+# Dependency directories (remove the comment below to include it)
 vendor/
+
+# Go workspace file
+go.work
+go.work.sum
 
 # Environment files
 .env
+.env.local
+.env.*.local
 
-# IDE
-.vscode/
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# IDE - JetBrains
 .idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# IDE - Vim
 *.swp
 *.swo
 *~
+.*.sw[a-z]
+*.un~
+Session.vim
 
-# OS
+# IDE - Emacs
+*~
+\#*\#
+.\#*
+.*.elc
+
+# OS - macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# OS - Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# OS - Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
+bin/
+
+# Coverage reports
+coverage.txt
+coverage.html
+coverage.out
+*.coverprofile
+
+# Debugging
+debug
+debug.test
+__debug_bin
+
+# Air (Go live reload)
+tmp/
+.air.toml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker volumes
+docker/volumes/
+
+# Kubernetes
+*.kubeconfig
+
+# Secrets (double check these are never committed!)
+*secret*
+*password*
+*token*
+*.key
+*.pem
+*.crt
+!generate-token.sh
+!generate-token.py
+
+# Backup files
+*.bak
+*.backup
+*.old
