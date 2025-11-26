@@ -350,10 +350,10 @@ The easiest way to run the service with Loki and Grafana:
 export HMAC_SECRET="your-secret-key"
 
 # Start all services
-docker-compose up -d
+docker compose -f docker/docker-compose.yml up -d
 
 # View logs
-docker-compose logs -f a0-logstream2loki
+docker compose -f docker/docker-compose.yml logs -f a0-logstream2loki
 ```
 
 This starts:

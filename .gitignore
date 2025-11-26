@@ -143,8 +143,8 @@ docker/volumes/
 *.key
 *.pem
 *.crt
-!generate-token.sh
-!generate-token.py
+!scripts/generate-token.sh
+!scripts/generate-token.py
 
 # Backup files
 *.bak
