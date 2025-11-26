@@ -70,9 +70,9 @@ func (h *LogsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Authenticate the request (custom token takes precedence over HMAC)
-	tenant, ok := authenticateRequest(w, r, h.hmacSecret, h.customAuthToken)
+	tenant, ok := authenticateRequest(w, r, h.hmacSecret, h.customAuthToken, h.logger)
 	if !ok {
-		// authenticateRequest already wrote the error response
+		// authenticateRequest already wrote the error response and logged the failure
 		return
 	}
 
