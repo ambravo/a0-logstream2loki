@@ -11,7 +11,11 @@ import (
 
 // Auth0IPRanges represents the structure of Auth0's IP ranges JSON
 type Auth0IPRanges struct {
-	LogStreaming []string `json:"log_streaming"`
+	LastUpdatedAt string `json:"last_updated_at"`
+	Regions       map[string]struct {
+		IPv4CIDRs []string `json:"ipv4_cidrs"`
+		IPv6CIDRs []string `json:"ipv6_cidrs"`
+	} `json:"regions"`
 }
 
 // fetchAuth0IPRanges fetches the latest IP ranges from Auth0's CDN
@@ -42,12 +46,26 @@ func fetchAuth0IPRanges(logger *slog.Logger) ([]string, error) {
 		return nil, fmt.Errorf("failed to parse Auth0 IP ranges JSON: %w", err)
 	}
 
+	// Collect all IPs from all regions (both IPv4 and IPv6)
+	var allIPs []string
+	for regionName, region := range ipRanges.Regions {
+		allIPs = append(allIPs, region.IPv4CIDRs...)
+		allIPs = append(allIPs, region.IPv6CIDRs...)
+		logger.Debug("Loaded Auth0 IP ranges for region",
+			"region", regionName,
+			"ipv4_count", len(region.IPv4CIDRs),
+			"ipv6_count", len(region.IPv6CIDRs),
+		)
+	}
+
 	logger.Info("Fetched Auth0 IP ranges",
-		"count", len(ipRanges.LogStreaming),
+		"count", len(allIPs),
+		"regions", len(ipRanges.Regions),
+		"last_updated", ipRanges.LastUpdatedAt,
 		"source", auth0IPRangesURL,
 	)
 
-	return ipRanges.LogStreaming, nil
+	return allIPs, nil
 }
 
 // buildIPAllowlist constructs the final IP allowlist based on configuration

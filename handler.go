@@ -51,7 +51,7 @@ func (h *LogsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// Allow if: in allowlist OR (local IP AND allow_local_ips enabled)
 		if !isAllowed && !(isLocal && h.allowLocalIPs) {
-			h.logger.Warn("Request from non-allowed IP",
+			h.logger.Error("Request rejected: IP not in allowlist",
 				"client_ip", clientIP,
 				"is_local", isLocal,
 				"remote_addr", r.RemoteAddr,
