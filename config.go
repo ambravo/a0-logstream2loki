@@ -8,15 +8,18 @@ import (
 
 // Config holds all configuration for the service
 type Config struct {
-	LokiURL       string
-	LokiUsername  string // Optional: Loki basic auth username
-	LokiPassword  string // Optional: Loki basic auth password
-	ListenAddr    string
-	HMACSecret    string
-	BatchSize     int
-	BatchFlush    int  // milliseconds
-	VerboseLogging bool // Enable verbose logging and bypass IP allowlist
-	IPAllowlist   []string // Allowed source IP addresses
+	LokiURL         string
+	LokiUsername    string   // Optional: Loki basic auth username
+	LokiPassword    string   // Optional: Loki basic auth password
+	ListenAddr      string
+	HMACSecret      string
+	CustomAuthToken string   // Optional: Custom authorization token (takes precedence over HMAC)
+	BatchSize       int
+	BatchFlush      int      // milliseconds
+	VerboseLogging  bool     // Enable verbose logging and bypass IP allowlist
+	IgnoreAuth0IPs  bool     // Ignore Auth0's official IP ranges
+	CustomIPs       []string // Custom IPs to add to allowlist
+	IPAllowlist     []string // Final computed allowlist (not configured directly)
 }
 
 // LoadConfig loads configuration from environment variables and command-line flags
@@ -30,9 +33,12 @@ func LoadConfig() (*Config, error) {
 	lokiPassword := flag.String("loki-password", "", "Loki basic auth password (optional)")
 	listenAddr := flag.String("listen-addr", "", "HTTP listen address (e.g. :8080)")
 	hmacSecret := flag.String("hmac-secret", "", "HMAC secret key for bearer token validation")
+	customAuthToken := flag.String("custom-auth-token", "", "Custom authorization token (takes precedence over HMAC)")
 	batchSize := flag.Int("batch-size", 500, "Maximum number of entries per batch")
 	batchFlush := flag.Int("batch-flush-ms", 200, "Maximum milliseconds before flushing a batch")
 	verbose := flag.Bool("verbose", false, "Enable verbose logging and bypass IP allowlist")
+	ignoreAuth0IPs := flag.Bool("ignore-auth0-ips", false, "Ignore Auth0's official IP ranges")
+	customIPs := flag.String("custom-ips", "", "Comma-separated list of custom IPs to add to allowlist")
 
 	flag.Parse()
 
@@ -42,10 +48,12 @@ func LoadConfig() (*Config, error) {
 	cfg.LokiPassword = getEnv("LOKI_PASSWORD", "")
 	cfg.ListenAddr = getEnv("LISTEN_ADDR", ":8080")
 	cfg.HMACSecret = getEnv("HMAC_SECRET", "")
+	cfg.CustomAuthToken = getEnv("CUSTOM_AUTH_TOKEN", "")
 	cfg.BatchSize = getEnvInt("BATCH_SIZE", 500)
 	cfg.BatchFlush = getEnvInt("BATCH_FLUSH_MS", 200)
 	cfg.VerboseLogging = getEnvBool("VERBOSE_LOGGING", false)
-	cfg.IPAllowlist = getDefaultIPAllowlist()
+	cfg.IgnoreAuth0IPs = getEnvBool("IGNORE_AUTH0_IPS", false)
+	cfg.CustomIPs = getEnvSlice("CUSTOM_IPS", []string{})
 
 	// Override with flags if provided
 	if *lokiURL != "" {
@@ -63,6 +71,9 @@ func LoadConfig() (*Config, error) {
 	if *hmacSecret != "" {
 		cfg.HMACSecret = *hmacSecret
 	}
+	if *customAuthToken != "" {
+		cfg.CustomAuthToken = *customAuthToken
+	}
 	if flag.Lookup("batch-size").Value.String() != "500" {
 		cfg.BatchSize = *batchSize
 	}
@@ -72,13 +83,21 @@ func LoadConfig() (*Config, error) {
 	if *verbose {
 		cfg.VerboseLogging = true
 	}
+	if *ignoreAuth0IPs {
+		cfg.IgnoreAuth0IPs = true
+	}
+	if *customIPs != "" {
+		cfg.CustomIPs = parseCommaSeparated(*customIPs)
+	}
 
 	// Validate required configuration
 	if cfg.LokiURL == "" {
 		return nil, fmt.Errorf("LOKI_URL is required (set via environment variable or -loki-url flag)")
 	}
-	if cfg.HMACSecret == "" {
-		return nil, fmt.Errorf("HMAC_SECRET is required (set via environment variable or -hmac-secret flag)")
+
+	// Either HMAC_SECRET or CUSTOM_AUTH_TOKEN must be set
+	if cfg.HMACSecret == "" && cfg.CustomAuthToken == "" {
+		return nil, fmt.Errorf("either HMAC_SECRET or CUSTOM_AUTH_TOKEN is required")
 	}
 
 	return cfg, nil
@@ -116,58 +135,73 @@ func getEnvBool(key string, defaultValue bool) bool {
 	return defaultValue
 }
 
-// getDefaultIPAllowlist returns the default Auth0 public IP allowlist
-// Source: https://auth0.com/docs/troubleshoot/customer-support/operational-policies/ip-addresses
-func getDefaultIPAllowlist() []string {
-	// Auth0 publicly announced IP addresses for Log Streaming
-	// These IPs are used by Auth0's US region
-	return []string{
-		"138.91.154.99",
-		"54.183.64.135",
-		"54.67.77.38",
-		"54.67.15.170",
-		"54.183.204.205",
-		"54.173.21.107",
-		"52.7.35.158",
-		"35.167.74.121",
-		"35.160.3.103",
-		"52.14.17.114",
-		"52.14.38.78",
-		"52.14.40.253",
-		"18.233.90.226",
-		"3.211.189.167",
-		"3.88.245.107",
-		"34.195.142.251",
-		"138.91.154.99",
-		"52.7.35.158",
-		"52.14.17.114",
-		"52.14.38.78",
-		"52.14.40.253",
-		"54.67.15.170",
-		"54.67.77.38",
-		"54.173.21.107",
-		"54.183.64.135",
-		"54.183.204.205",
-		"35.160.3.103",
-		"35.167.74.121",
-		// EU region IPs
-		"52.28.56.226",
-		"52.28.45.240",
-		"52.16.224.164",
-		"52.16.193.66",
-		"34.253.4.94",
-		"52.50.106.250",
-		"52.211.56.181",
-		"52.213.38.246",
-		"52.213.74.69",
-		"52.213.216.142",
-		// AU region IPs
-		"54.66.205.24",
-		"54.66.202.17",
-		"13.54.254.182",
-		"13.55.232.24",
-		"13.210.52.131",
-		"13.236.8.164",
-		"13.238.158.225",
+// getEnvSlice retrieves a comma-separated environment variable as a slice
+func getEnvSlice(key string, defaultValue []string) []string {
+	if value := os.Getenv(key); value != "" {
+		return parseCommaSeparated(value)
 	}
+	return defaultValue
+}
+
+// parseCommaSeparated parses a comma-separated string into a slice
+func parseCommaSeparated(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+
+	parts := []string{}
+	for _, part := range splitAndTrim(s, ",") {
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	return parts
+}
+
+// splitAndTrim splits a string and trims whitespace from each part
+func splitAndTrim(s, sep string) []string {
+	parts := []string{}
+	for _, part := range splitString(s, sep) {
+		trimmed := trimSpace(part)
+		parts = append(parts, trimmed)
+	}
+	return parts
+}
+
+// splitString splits a string by separator
+func splitString(s, sep string) []string {
+	if s == "" {
+		return []string{}
+	}
+
+	result := []string{}
+	current := ""
+
+	for i := 0; i < len(s); i++ {
+		if i+len(sep) <= len(s) && s[i:i+len(sep)] == sep {
+			result = append(result, current)
+			current = ""
+			i += len(sep) - 1
+		} else {
+			current += string(s[i])
+		}
+	}
+	result = append(result, current)
+	return result
+}
+
+// trimSpace removes leading and trailing whitespace
+func trimSpace(s string) string {
+	start := 0
+	end := len(s)
+
+	for start < end && (s[start] == ' ' || s[start] == '\t' || s[start] == '\n' || s[start] == '\r') {
+		start++
+	}
+
+	for end > start && (s[end-1] == ' ' || s[end-1] == '\t' || s[end-1] == '\n' || s[end-1] == '\r') {
+		end--
+	}
+
+	return s[start:end]
 }

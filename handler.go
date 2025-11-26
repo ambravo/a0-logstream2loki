@@ -11,21 +11,23 @@ import (
 
 // LogsHandler handles incoming POST /logs requests
 type LogsHandler struct {
-	hmacSecret     string
-	entryChan      chan<- LogEntry
-	logger         *slog.Logger
-	verboseLogging bool
-	ipAllowlist    []string
+	hmacSecret      string
+	customAuthToken string
+	entryChan       chan<- LogEntry
+	logger          *slog.Logger
+	verboseLogging  bool
+	ipAllowlist     []string
 }
 
 // NewLogsHandler creates a new logs handler
-func NewLogsHandler(hmacSecret string, entryChan chan<- LogEntry, logger *slog.Logger, verboseLogging bool, ipAllowlist []string) *LogsHandler {
+func NewLogsHandler(hmacSecret, customAuthToken string, entryChan chan<- LogEntry, logger *slog.Logger, verboseLogging bool, ipAllowlist []string) *LogsHandler {
 	return &LogsHandler{
-		hmacSecret:     hmacSecret,
-		entryChan:      entryChan,
-		logger:         logger,
-		verboseLogging: verboseLogging,
-		ipAllowlist:    ipAllowlist,
+		hmacSecret:      hmacSecret,
+		customAuthToken: customAuthToken,
+		entryChan:       entryChan,
+		logger:          logger,
+		verboseLogging:  verboseLogging,
+		ipAllowlist:     ipAllowlist,
 	}
 }
 
@@ -51,8 +53,8 @@ func (h *LogsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Authenticate the request using HMAC
-	tenant, ok := authenticateRequest(w, r, h.hmacSecret)
+	// Authenticate the request (custom token takes precedence over HMAC)
+	tenant, ok := authenticateRequest(w, r, h.hmacSecret, h.customAuthToken)
 	if !ok {
 		// authenticateRequest already wrote the error response
 		return

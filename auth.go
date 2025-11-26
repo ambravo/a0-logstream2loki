@@ -14,9 +14,11 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-// authenticateRequest validates the bearer token against the tenant using HMAC-SHA256
+// authenticateRequest validates the bearer token
+// If customAuthToken is set, it uses exact token matching (takes precedence)
+// Otherwise, it validates using HMAC-SHA256 of the tenant
 // Returns the tenant string if authentication succeeds, otherwise writes an error response and returns empty string
-func authenticateRequest(w http.ResponseWriter, r *http.Request, hmacSecret string) (string, bool) {
+func authenticateRequest(w http.ResponseWriter, r *http.Request, hmacSecret, customAuthToken string) (string, bool) {
 	// Extract tenant query parameter
 	tenant := r.URL.Query().Get("tenant")
 	if tenant == "" {
@@ -38,6 +40,22 @@ func authenticateRequest(w http.ResponseWriter, r *http.Request, hmacSecret stri
 		return "", false
 	}
 	token := parts[1]
+
+	// If custom auth token is configured, use exact matching (takes precedence)
+	if customAuthToken != "" {
+		// Timing-safe comparison of custom token
+		if !hmac.Equal([]byte(token), []byte(customAuthToken)) {
+			writeJSONError(w, http.StatusUnauthorized, "invalid_token")
+			return "", false
+		}
+		return tenant, true
+	}
+
+	// Otherwise, use HMAC-SHA256 validation
+	if hmacSecret == "" {
+		writeJSONError(w, http.StatusUnauthorized, "authentication_not_configured")
+		return "", false
+	}
 
 	// Compute HMAC-SHA256 of the tenant string using the configured secret
 	mac := hmac.New(sha256.New, []byte(hmacSecret))

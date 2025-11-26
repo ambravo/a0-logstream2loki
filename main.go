@@ -25,6 +25,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Build IP allowlist from Auth0 and custom sources
+	cfg.IPAllowlist = buildIPAllowlist(cfg, logger)
+
 	logger.Info("Starting a0-logstream2loki service",
 		"loki_url", cfg.LokiURL,
 		"listen_addr", cfg.ListenAddr,
@@ -32,6 +35,9 @@ func main() {
 		"batch_flush_ms", cfg.BatchFlush,
 		"verbose_logging", cfg.VerboseLogging,
 		"ip_allowlist_size", len(cfg.IPAllowlist),
+		"ignore_auth0_ips", cfg.IgnoreAuth0IPs,
+		"custom_ips_count", len(cfg.CustomIPs),
+		"custom_auth_enabled", cfg.CustomAuthToken != "",
 		"loki_auth_enabled", cfg.LokiUsername != "",
 	)
 
@@ -63,7 +69,7 @@ func main() {
 	go batcher.Run()
 
 	// Create HTTP handler
-	handler := NewLogsHandler(cfg.HMACSecret, entryChan, logger, cfg.VerboseLogging, cfg.IPAllowlist)
+	handler := NewLogsHandler(cfg.HMACSecret, cfg.CustomAuthToken, entryChan, logger, cfg.VerboseLogging, cfg.IPAllowlist)
 
 	// Set up HTTP server with mux
 	mux := http.NewServeMux()

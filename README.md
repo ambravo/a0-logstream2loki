@@ -77,7 +77,8 @@ The service can be configured via **environment variables** or **command-line fl
 | Environment Variable | Flag | Description |
 |---------------------|------|-------------|
 | `LOKI_URL` | `-loki-url` | Base URL of Loki (e.g., `http://loki:3100`) |
-| `HMAC_SECRET` | `-hmac-secret` | Secret key for HMAC token validation |
+| `HMAC_SECRET` | `-hmac-secret` | Secret key for HMAC token validation (Mode 1) |
+| `CUSTOM_AUTH_TOKEN` | `-custom-auth-token` | Custom static token (Mode 2, takes precedence) |
 | `LOKI_USERNAME` | `-loki-username` | Loki basic auth username (optional) |
 | `LOKI_PASSWORD` | `-loki-password` | Loki basic auth password (optional) |
 
@@ -88,7 +89,9 @@ The service can be configured via **environment variables** or **command-line fl
 | `LISTEN_ADDR` | `-listen-addr` | `:8080` | HTTP listen address |
 | `BATCH_SIZE` | `-batch-size` | `500` | Maximum entries per batch |
 | `BATCH_FLUSH_MS` | `-batch-flush-ms` | `200` | Maximum milliseconds before flushing |
-| `VERBOSE_LOGGING` | `-verbose` | `false` | Enable verbose logging and bypass IP allowlist |
+| `VERBOSE_LOGGING` | `-verbose` | `false` | Bypass ALL IP checks (testing mode) |
+| `IGNORE_AUTH0_IPS` | `-ignore-auth0-ips` | `false` | Don't fetch/use Auth0's official IP ranges |
+| `CUSTOM_IPS` | `-custom-ips` | - | Comma-separated custom IPs to add to allowlist |
 
 ### Example: Environment Variables
 
@@ -131,28 +134,46 @@ export $(cat .env | xargs)
 
 ### IP Allowlist
 
-The service includes a built-in allowlist of Auth0's publicly announced IP addresses for all regions (US, EU, AU). This provides an additional layer of security by rejecting requests from unknown IPs.
+The service automatically fetches and uses Auth0's **official IP ranges** from their CDN at startup:
+- **Source**: https://cdn.auth0.com/ip-ranges.json ([Documentation](https://auth0.com/docs/secure/security-guidance/data-security/allowlist))
+- **Updated automatically** on service restart
+- Includes all regions (US, EU, AU, etc.)
 
-**Sources**:
-- [Auth0 IP Addresses Documentation](https://auth0.com/docs/troubleshoot/customer-support/operational-policies/ip-addresses)
+#### IP Allowlist Configuration
 
-The IP allowlist includes:
-- US region IPs (18.233.90.226, 3.211.189.167, 3.88.245.107, etc.)
-- EU region IPs (52.28.56.226, 52.28.45.240, 52.16.224.164, etc.)
-- AU region IPs (54.66.205.24, 54.66.202.17, 13.54.254.182, etc.)
-
-**Cloudflare Support**: The service automatically extracts the real client IP from `X-Forwarded-For` headers when behind Cloudflare or other proxies.
-
-**Verbose Mode**: Use `-verbose` or `VERBOSE_LOGGING=true` to bypass the IP allowlist during testing or development.
-
+**1. Default Behavior** - Fetch Auth0's official IPs:
 ```bash
-# Enable verbose logging (bypasses IP allowlist)
+# Service automatically fetches from https://cdn.auth0.com/ip-ranges.json
+./a0-logstream2loki
+```
+
+**2. Add Custom IPs** - Extend Auth0's list with your own IPs:
+```bash
+export CUSTOM_IPS="192.168.1.100,10.0.0.5"
+./a0-logstream2loki
+```
+
+**3. Ignore Auth0 IPs** - Only use custom IPs:
+```bash
+export IGNORE_AUTH0_IPS=true
+export CUSTOM_IPS="192.168.1.100"
+./a0-logstream2loki
+```
+
+**4. Verbose Mode** - Bypass ALL IP checks (testing/development):
+```bash
 ./a0-logstream2loki -verbose
 ```
+
+**Cloudflare Support**: The service automatically extracts the real client IP from `X-Forwarded-For` headers when behind Cloudflare or other proxies.
 
 ## Usage
 
 ### Authentication
+
+The service supports **two authentication modes**:
+
+#### Mode 1: HMAC-SHA256 (Default)
 
 The service uses HMAC-SHA256 for authentication. Each request must include:
 
@@ -184,6 +205,25 @@ secret = "your-secret-key"
 token = hmac.new(secret.encode(), tenant.encode(), hashlib.sha256).hexdigest()
 print(f"Bearer token: {token}")
 ```
+
+#### Mode 2: Custom Static Token (Takes Precedence)
+
+For simpler setups, you can configure a **custom static token** that takes precedence over HMAC validation:
+
+```bash
+export CUSTOM_AUTH_TOKEN="my-secret-static-token-12345"
+./a0-logstream2loki
+```
+
+Then use it in requests:
+```bash
+curl -X POST "http://localhost:8080/logs?tenant=amba" \
+  -H "Authorization: Bearer my-secret-static-token-12345" \
+  -H "Content-Type: application/x-ndjson" \
+  --data-binary @logs.jsonl
+```
+
+**Note**: If `CUSTOM_AUTH_TOKEN` is set, it takes precedence and HMAC validation is bypassed. The tenant parameter is still required but not used for authentication validation.
 
 ### Sending Logs
 
