@@ -6,24 +6,32 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 )
 
 func main() {
-	// Set up structured logging
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	// Load configuration first (with temporary logger)
+	tempLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
-	slog.SetDefault(logger)
 
-	// Load configuration from environment variables and flags
 	cfg, err := LoadConfig()
 	if err != nil {
-		logger.Error("Configuration error", "error", err)
+		tempLogger.Error("Configuration error", "error", err)
 		os.Exit(1)
 	}
+
+	// Parse log level from config
+	logLevel := parseLogLevel(cfg.LogLevel)
+
+	// Set up structured logging with configured level
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+	slog.SetDefault(logger)
 
 	// Build IP allowlist from Auth0 and custom sources
 	cfg.IPAllowlist = buildIPAllowlist(cfg, logger)
@@ -129,4 +137,20 @@ func main() {
 	wg.Wait()
 
 	logger.Info("Shutdown complete")
+}
+
+// parseLogLevel converts a string log level to slog.Level
+func parseLogLevel(level string) slog.Level {
+	switch strings.ToUpper(level) {
+	case "DEBUG":
+		return slog.LevelDebug
+	case "INFO":
+		return slog.LevelInfo
+	case "WARN", "WARNING":
+		return slog.LevelWarn
+	case "ERROR":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }
