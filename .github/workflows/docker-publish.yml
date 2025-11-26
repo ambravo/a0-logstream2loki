@@ -21,19 +21,12 @@ jobs:
       id-token: write
       attestations: write
 
-    strategy:
-      matrix:
-        include:
-          - platform: linux/arm64
-            tag-suffix: arm64
-            is-latest: true
-          - platform: linux/amd64
-            tag-suffix: amd64
-            is-latest: false
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -50,18 +43,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          flavor: |
-            latest=false
           tags: |
-            type=ref,event=branch,suffix=-${{ matrix.tag-suffix }}
-            type=semver,pattern={{version}},suffix=-${{ matrix.tag-suffix }}
-            type=semver,pattern={{major}}.{{minor}},suffix=-${{ matrix.tag-suffix }}
-            type=semver,pattern={{major}},suffix=-${{ matrix.tag-suffix }}
-            type=sha,prefix={{branch}}-,suffix=-${{ matrix.tag-suffix }}
-            type=raw,value=latest-${{ matrix.tag-suffix }},enable={{is_default_branch}}
-            type=raw,value=latest,enable=${{ matrix.is-latest == true }}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image (${{ matrix.platform }})
+      - name: Build and push multi-arch Docker image
         id: build
         uses: docker/build-push-action@v5
         with:
@@ -70,9 +60,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.tag-suffix }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.tag-suffix }}
-          platforms: ${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/arm64,linux/amd64
           provenance: false
 
       - name: Generate artifact attestation
