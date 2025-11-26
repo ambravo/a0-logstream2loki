@@ -16,6 +16,7 @@ type Config struct {
 	CustomAuthToken string   // Optional: Custom authorization token (takes precedence over HMAC)
 	BatchSize       int
 	BatchFlush      int      // milliseconds
+	ServiceName     string   // Service name label for Loki logs (default: auth0_logs)
 	LogLevel        string   // Log level: DEBUG, INFO, WARN, ERROR (default: INFO)
 	VerboseLogging  bool     // Enable verbose logging and bypass IP allowlist
 	AllowLocalIPs   bool     // Allow requests from local/private network IPs
@@ -38,6 +39,7 @@ func LoadConfig() (*Config, error) {
 	customAuthToken := flag.String("custom-auth-token", "", "Custom authorization token (takes precedence over HMAC)")
 	batchSize := flag.Int("batch-size", 500, "Maximum number of entries per batch")
 	batchFlush := flag.Int("batch-flush-ms", 200, "Maximum milliseconds before flushing a batch")
+	serviceName := flag.String("service-name", "", "Service name label for Loki logs (default: auth0_logs)")
 	logLevel := flag.String("log-level", "", "Log level: DEBUG, INFO, WARN, ERROR (default: INFO)")
 	verbose := flag.Bool("verbose", false, "Enable verbose logging and bypass IP allowlist")
 	allowLocalIPs := flag.Bool("allow-local-ips", false, "Allow requests from local/private network IPs")
@@ -55,6 +57,7 @@ func LoadConfig() (*Config, error) {
 	cfg.CustomAuthToken = getEnv("CUSTOM_AUTH_TOKEN", "")
 	cfg.BatchSize = getEnvInt("BATCH_SIZE", 500)
 	cfg.BatchFlush = getEnvInt("BATCH_FLUSH_MS", 200)
+	cfg.ServiceName = getEnv("SERVICE_NAME", "auth0_logs")
 	cfg.LogLevel = getEnv("LOG_LEVEL", "INFO")
 	cfg.VerboseLogging = getEnvBool("VERBOSE_LOGGING", false)
 	cfg.AllowLocalIPs = getEnvBool("ALLOW_LOCAL_IPS", false)
@@ -85,6 +88,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if flag.Lookup("batch-flush-ms").Value.String() != "200" {
 		cfg.BatchFlush = *batchFlush
+	}
+	if *serviceName != "" {
+		cfg.ServiceName = *serviceName
 	}
 	if *logLevel != "" {
 		cfg.LogLevel = *logLevel

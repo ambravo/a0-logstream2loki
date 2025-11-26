@@ -15,18 +15,20 @@ type LogsHandler struct {
 	customAuthToken string
 	entryChan       chan<- LogEntry
 	logger          *slog.Logger
+	serviceName     string
 	verboseLogging  bool
 	allowLocalIPs   bool
 	ipAllowlist     []string
 }
 
 // NewLogsHandler creates a new logs handler
-func NewLogsHandler(hmacSecret, customAuthToken string, entryChan chan<- LogEntry, logger *slog.Logger, verboseLogging, allowLocalIPs bool, ipAllowlist []string) *LogsHandler {
+func NewLogsHandler(hmacSecret, customAuthToken string, entryChan chan<- LogEntry, logger *slog.Logger, serviceName string, verboseLogging, allowLocalIPs bool, ipAllowlist []string) *LogsHandler {
 	return &LogsHandler{
 		hmacSecret:      hmacSecret,
 		customAuthToken: customAuthToken,
 		entryChan:       entryChan,
 		logger:          logger,
+		serviceName:     serviceName,
 		verboseLogging:  verboseLogging,
 		allowLocalIPs:   allowLocalIPs,
 		ipAllowlist:     ipAllowlist,
@@ -175,7 +177,7 @@ func (h *LogsHandler) parseLogLine(line string) (LogEntry, error) {
 
 	// Create labels map
 	labels := map[string]string{
-		"service_name":     "auth0_logs",
+		"service_name":     h.serviceName,
 		"type":             logData.Data.Type,
 		"environment_name": logData.Data.EnvironmentName,
 		"tenant_name":      logData.Data.TenantName,

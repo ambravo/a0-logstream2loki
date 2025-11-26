@@ -89,6 +89,7 @@ The service can be configured via **environment variables** or **command-line fl
 | `LISTEN_ADDR` | `-listen-addr` | `:8080` | HTTP listen address |
 | `BATCH_SIZE` | `-batch-size` | `500` | Maximum entries per batch |
 | `BATCH_FLUSH_MS` | `-batch-flush-ms` | `200` | Maximum milliseconds before flushing |
+| `SERVICE_NAME` | `-service-name` | `auth0_logs` | Service name label for Loki logs |
 | `LOG_LEVEL` | `-log-level` | `INFO` | Log level: DEBUG, INFO, WARN, ERROR |
 | `VERBOSE_LOGGING` | `-verbose` | `false` | Bypass ALL IP checks (testing mode) |
 | `ALLOW_LOCAL_IPS` | `-allow-local-ips` | `false` | Allow requests from local/private network IPs |
@@ -274,7 +275,7 @@ Each line must be a valid JSON object with the following structure:
 
 **Loki Labels**:
 All log entries are sent to Loki with the following labels:
-- `service_name`: Always set to `auth0_logs`
+- `service_name`: Configurable via SERVICE_NAME env var (default: `auth0_logs`)
 - `type`: Log type from Auth0
 - `environment_name`: Environment name from Auth0
 - `tenant_name`: Tenant name from Auth0

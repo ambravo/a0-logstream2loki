@@ -78,7 +78,7 @@ func main() {
 	go batcher.Run()
 
 	// Create HTTP handler
-	handler := NewLogsHandler(cfg.HMACSecret, cfg.CustomAuthToken, entryChan, logger, cfg.VerboseLogging, cfg.AllowLocalIPs, cfg.IPAllowlist)
+	handler := NewLogsHandler(cfg.HMACSecret, cfg.CustomAuthToken, entryChan, logger, cfg.ServiceName, cfg.VerboseLogging, cfg.AllowLocalIPs, cfg.IPAllowlist)
 
 	// Set up HTTP server with mux
 	mux := http.NewServeMux()
