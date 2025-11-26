@@ -89,6 +89,7 @@ The service can be configured via **environment variables** or **command-line fl
 | `LISTEN_ADDR` | `-listen-addr` | `:8080` | HTTP listen address |
 | `BATCH_SIZE` | `-batch-size` | `500` | Maximum entries per batch |
 | `BATCH_FLUSH_MS` | `-batch-flush-ms` | `200` | Maximum milliseconds before flushing |
+| `LOG_LEVEL` | `-log-level` | `INFO` | Log level: DEBUG, INFO, WARN, ERROR |
 | `VERBOSE_LOGGING` | `-verbose` | `false` | Bypass ALL IP checks (testing mode) |
 | `ALLOW_LOCAL_IPS` | `-allow-local-ips` | `false` | Allow requests from local/private network IPs |
 | `IGNORE_AUTH0_IPS` | `-ignore-auth0-ips` | `false` | Don't fetch/use Auth0's official IP ranges |
