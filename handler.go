@@ -16,17 +16,19 @@ type LogsHandler struct {
 	entryChan       chan<- LogEntry
 	logger          *slog.Logger
 	verboseLogging  bool
+	allowLocalIPs   bool
 	ipAllowlist     []string
 }
 
 // NewLogsHandler creates a new logs handler
-func NewLogsHandler(hmacSecret, customAuthToken string, entryChan chan<- LogEntry, logger *slog.Logger, verboseLogging bool, ipAllowlist []string) *LogsHandler {
+func NewLogsHandler(hmacSecret, customAuthToken string, entryChan chan<- LogEntry, logger *slog.Logger, verboseLogging, allowLocalIPs bool, ipAllowlist []string) *LogsHandler {
 	return &LogsHandler{
 		hmacSecret:      hmacSecret,
 		customAuthToken: customAuthToken,
 		entryChan:       entryChan,
 		logger:          logger,
 		verboseLogging:  verboseLogging,
+		allowLocalIPs:   allowLocalIPs,
 		ipAllowlist:     ipAllowlist,
 	}
 }
@@ -43,14 +45,28 @@ func (h *LogsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	clientIP := extractClientIP(r)
 
 	// Check IP allowlist (unless verbose logging is enabled)
-	if !h.verboseLogging && !isIPAllowed(clientIP, h.ipAllowlist) {
-		h.logger.Warn("Request from non-allowed IP",
-			"client_ip", clientIP,
-			"remote_addr", r.RemoteAddr,
-			"x_forwarded_for", r.Header.Get("X-Forwarded-For"),
-		)
-		writeJSONError(w, http.StatusForbidden, "ip_not_allowed")
-		return
+	if !h.verboseLogging {
+		isLocal := isLocalIP(clientIP)
+		isAllowed := isIPAllowed(clientIP, h.ipAllowlist)
+
+		// Allow if: in allowlist OR (local IP AND allow_local_ips enabled)
+		if !isAllowed && !(isLocal && h.allowLocalIPs) {
+			h.logger.Warn("Request from non-allowed IP",
+				"client_ip", clientIP,
+				"is_local", isLocal,
+				"remote_addr", r.RemoteAddr,
+				"x_forwarded_for", r.Header.Get("X-Forwarded-For"),
+			)
+			writeJSONError(w, http.StatusForbidden, "ip_not_allowed")
+			return
+		}
+
+		// Log if local IP was allowed due to allow_local_ips setting
+		if isLocal && h.allowLocalIPs && !isAllowed {
+			h.logger.Debug("Request allowed from local network IP",
+				"client_ip", clientIP,
+			)
+		}
 	}
 
 	// Authenticate the request (custom token takes precedence over HMAC)

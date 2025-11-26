@@ -34,6 +34,7 @@ func main() {
 		"batch_size", cfg.BatchSize,
 		"batch_flush_ms", cfg.BatchFlush,
 		"verbose_logging", cfg.VerboseLogging,
+		"allow_local_ips", cfg.AllowLocalIPs,
 		"ip_allowlist_size", len(cfg.IPAllowlist),
 		"ignore_auth0_ips", cfg.IgnoreAuth0IPs,
 		"custom_ips_count", len(cfg.CustomIPs),
@@ -69,7 +70,7 @@ func main() {
 	go batcher.Run()
 
 	// Create HTTP handler
-	handler := NewLogsHandler(cfg.HMACSecret, cfg.CustomAuthToken, entryChan, logger, cfg.VerboseLogging, cfg.IPAllowlist)
+	handler := NewLogsHandler(cfg.HMACSecret, cfg.CustomAuthToken, entryChan, logger, cfg.VerboseLogging, cfg.AllowLocalIPs, cfg.IPAllowlist)
 
 	// Set up HTTP server with mux
 	mux := http.NewServeMux()

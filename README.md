@@ -90,6 +90,7 @@ The service can be configured via **environment variables** or **command-line fl
 | `BATCH_SIZE` | `-batch-size` | `500` | Maximum entries per batch |
 | `BATCH_FLUSH_MS` | `-batch-flush-ms` | `200` | Maximum milliseconds before flushing |
 | `VERBOSE_LOGGING` | `-verbose` | `false` | Bypass ALL IP checks (testing mode) |
+| `ALLOW_LOCAL_IPS` | `-allow-local-ips` | `false` | Allow requests from local/private network IPs |
 | `IGNORE_AUTH0_IPS` | `-ignore-auth0-ips` | `false` | Don't fetch/use Auth0's official IP ranges |
 | `CUSTOM_IPS` | `-custom-ips` | - | Comma-separated custom IPs to add to allowlist |
 
@@ -153,19 +154,30 @@ export CUSTOM_IPS="192.168.1.100,10.0.0.5"
 ./a0-logstream2loki
 ```
 
-**3. Ignore Auth0 IPs** - Only use custom IPs:
+**3. Allow Local Networks** - Accept requests from private IPs (RFC1918):
+```bash
+export ALLOW_LOCAL_IPS=true
+./a0-logstream2loki
+# Allows: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8, etc.
+```
+
+**4. Ignore Auth0 IPs** - Only use custom IPs:
 ```bash
 export IGNORE_AUTH0_IPS=true
 export CUSTOM_IPS="192.168.1.100"
 ./a0-logstream2loki
 ```
 
-**4. Verbose Mode** - Bypass ALL IP checks (testing/development):
+**5. Verbose Mode** - Bypass ALL IP checks (testing/development):
 ```bash
 ./a0-logstream2loki -verbose
 ```
 
 **Cloudflare Support**: The service automatically extracts the real client IP from `X-Forwarded-For` headers when behind Cloudflare or other proxies.
+
+**Local Networks**: When `ALLOW_LOCAL_IPS=true`, the following IP ranges are automatically allowed:
+- **IPv4**: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8, 169.254.0.0/16
+- **IPv6**: ::1 (loopback), fe80::/10 (link-local), fc00::/7 (unique local)
 
 ## Usage
 

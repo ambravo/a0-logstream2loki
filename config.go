@@ -17,6 +17,7 @@ type Config struct {
 	BatchSize       int
 	BatchFlush      int      // milliseconds
 	VerboseLogging  bool     // Enable verbose logging and bypass IP allowlist
+	AllowLocalIPs   bool     // Allow requests from local/private network IPs
 	IgnoreAuth0IPs  bool     // Ignore Auth0's official IP ranges
 	CustomIPs       []string // Custom IPs to add to allowlist
 	IPAllowlist     []string // Final computed allowlist (not configured directly)
@@ -37,6 +38,7 @@ func LoadConfig() (*Config, error) {
 	batchSize := flag.Int("batch-size", 500, "Maximum number of entries per batch")
 	batchFlush := flag.Int("batch-flush-ms", 200, "Maximum milliseconds before flushing a batch")
 	verbose := flag.Bool("verbose", false, "Enable verbose logging and bypass IP allowlist")
+	allowLocalIPs := flag.Bool("allow-local-ips", false, "Allow requests from local/private network IPs")
 	ignoreAuth0IPs := flag.Bool("ignore-auth0-ips", false, "Ignore Auth0's official IP ranges")
 	customIPs := flag.String("custom-ips", "", "Comma-separated list of custom IPs to add to allowlist")
 
@@ -52,6 +54,7 @@ func LoadConfig() (*Config, error) {
 	cfg.BatchSize = getEnvInt("BATCH_SIZE", 500)
 	cfg.BatchFlush = getEnvInt("BATCH_FLUSH_MS", 200)
 	cfg.VerboseLogging = getEnvBool("VERBOSE_LOGGING", false)
+	cfg.AllowLocalIPs = getEnvBool("ALLOW_LOCAL_IPS", false)
 	cfg.IgnoreAuth0IPs = getEnvBool("IGNORE_AUTH0_IPS", false)
 	cfg.CustomIPs = getEnvSlice("CUSTOM_IPS", []string{})
 
@@ -82,6 +85,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if *verbose {
 		cfg.VerboseLogging = true
+	}
+	if *allowLocalIPs {
+		cfg.AllowLocalIPs = true
 	}
 	if *ignoreAuth0IPs {
 		cfg.IgnoreAuth0IPs = true
