@@ -1,30 +1,47 @@
 # Build stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /app
 
-# Copy go mod files
+# Copy go mod files first for better layer caching
 COPY go.mod ./
+
+# Download dependencies
+RUN go mod download && go mod verify
 
 # Copy source code
 COPY *.go ./
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-s -w" -o a0-logstream2loki .
+# Build the application with security hardening flags
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -a \
+    -installsuffix cgo \
+    -ldflags="-s -w -extldflags '-static'" \
+    -trimpath \
+    -o a0-logstream2loki .
 
-# Final stage
-FROM alpine:latest
+# Final stage - use distroless for minimal attack surface
+FROM gcr.io/distroless/static-debian12:nonroot
 
-# Add ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates
-
-WORKDIR /root/
+# Copy timezone data and CA certificates from builder
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy the binary from builder
-COPY --from=builder /app/a0-logstream2loki .
+COPY --from=builder /app/a0-logstream2loki /a0-logstream2loki
+
+# Use non-root user (distroless nonroot user)
+USER nonroot:nonroot
 
 # Expose the default port
 EXPOSE 8080
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["/a0-logstream2loki", "-help"]
+
 # Run the binary
-CMD ["./a0-logstream2loki"]
+ENTRYPOINT ["/a0-logstream2loki"]

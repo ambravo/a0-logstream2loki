@@ -2,6 +2,8 @@
 
 A minimal, high-performance Go service that receives Auth0 Log Streaming as JSON Lines (JSONL) over HTTP POST and translates it into Loki `/loki/api/v1/push` requests.
 
+**Built with Go 1.23** | **Runs as non-root** | **Distroless container**
+
 ## Features
 
 - **HMAC-based authentication**: Validates bearer tokens using HMAC-SHA256
@@ -15,6 +17,7 @@ A minimal, high-performance Go service that receives Auth0 Log Streaming as JSON
 - **Graceful shutdown**: Handles SIGINT/SIGTERM, drains pending batches before exit
 - **Zero dependencies**: Uses only Go standard library (log/slog for structured logging)
 - **High performance**: Concurrent processing with bounded goroutines and efficient memory usage
+- **Secure by default**: Distroless container, runs as non-root user, hardened build flags
 
 ## Architecture
 
